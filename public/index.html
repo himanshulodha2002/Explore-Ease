@@ -20,8 +20,11 @@
         <div class="left">
             <div class="input-container">
                 <h2>ExploreEase</h2>
-                <input type="text" id="inputText" placeholder="Enter text here">
-                <button onclick="addToHistory()">Submit</button>
+                <div class="chat-history" id="chatHistory"></div> <!-- Chat messages will be displayed here -->
+                <div class="textarea-container">
+                    <textarea id="inputText" placeholder="Enter text here"></textarea>
+                    <button id="sendButton" onclick="addToHistory()">Send</button>
+                </div>
             </div>
         </div>
         <div class="right">

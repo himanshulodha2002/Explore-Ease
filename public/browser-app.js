@@ -1,12 +1,16 @@
 function addToHistory() {
-  var inputText = document.getElementById("inputText").value;
-  if (inputText) {
-    localStorage.setItem(
-      "history",
-      (localStorage.getItem("history") || "") + `<li>${inputText}</li>`
-    );
-    document.getElementById("inputText").value = "";
-  }
+  const inputText = document.getElementById("inputText");
+  const chatHistory = document.getElementById("chatHistory");
+
+  // Create a new div element for the message
+  const messageDiv = document.createElement("div");
+  messageDiv.textContent = inputText.value; // Set the text content to the input value
+
+  // Append the new message div to the chat history
+  chatHistory.appendChild(messageDiv);
+
+  // Clear the input field after submitting
+  inputText.value = "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////// *map
