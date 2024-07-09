@@ -9,52 +9,74 @@ body {
 .container {
     display: flex;
     justify-content: space-between;
-    height: calc(100vh - 48px); /* Adjusting height minus the menu height */
+    height: calc(100vh - 48px); 
 }
 
 .textarea-container {
     position: relative;
-    border-radius: 20px; /* Makes the container round */
-    border: 1px solid #ccc; /* Adds a border to the container */
-    overflow: hidden; /* Ensures nothing spills outside the rounded corners */
+    border-radius: 20px; 
+    border: 1px solid #ccc; 
+    overflow: hidden; 
+    display: flex;
+    justify-items: right;
+}
+
+#chatBubbleUser {
+    background-color: #007bff;
+    color: white;
+    border-radius: 20px;
+    padding: 10px;
+    margin: 10px;
+    display: flex;
+    max-width: 60%;
+    word-wrap: break-word;
+    align-self: flex-end; 
+    text-align: right; 
 }
 
 #inputText {
     width: 100%;
-    height: 100px; /* Adjust based on your needs */
+    height: 100px; 
     align-content: center;
     padding: 5%;
-    border-radius: 20px; /* Makes the textarea round */
-    border: none; /* Removes the default border */
-    padding-right: 60px; /* Makes space for the send button */
-    box-sizing: border-box; /* Ensures padding does not affect the total width */
+    border-radius: 20px; 
+    border: none; 
+    padding-right: 60px; 
+    box-sizing: border-box; 
 }
 
 #sendButton {
     position: absolute;
-    right: 10px; /* Adjust based on your needs */
-    bottom: 10px; /* Adjust based on your needs */
-    border: none; /* Optional: Removes the default border */
-    background-color: #007bff; /* Example background color */
-    color: white; /* Text color */
-    border-radius: 50%; /* Makes the button round */
-    width: 40px; /* Adjust based on your needs */
-    height: 40px; /* Adjust based on your needs */
-    cursor: pointer; /* Changes the cursor on hover */
+    right: 10px; 
+    bottom: 10px; 
+    border: none; 
+    background-color: #007bff; 
+    color: white; 
+    border-radius: 50%; 
+    width: 40px; 
+    height: 40px; 
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-/* Optional: Hide the send button when the textarea is not focused */
-/* #inputText:not(:focus) + #sendButton {
-    display: none;
-} */
 
 .chat-history {
+    display: flex;
+    flex-direction: column;
     height: 80%;
-    overflow-y: auto;
+    overflow-y: scroll;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     border: 1px solid #ccc;
-    border-radius: 20px; /* Makes the textarea round */
+    border-radius: 20px;
     margin-bottom: 10px;
     padding: 5px;
+}
+
+.chat-history::-webkit-scrollbar {
+    display: none;
 }
 
 .menu {
@@ -91,13 +113,13 @@ body {
 
 .input-container {
     text-align: center;
-    background-color: #2e2e2e; /* Lighter background color for input area */
+    background-color: #2e2e2e; 
     padding: 20px;
     border-radius: 10px;
-    width: 80%; /* Fill the width of the .left container */
-    height: 90%; /* Fill the height of the .left container */
+    width: 80%; 
+    height: 90%; 
     display: flex;
-    flex-direction: column; /* Stack children vertically */
+    flex-direction: column; 
     justify-content: space-between;
 }
 
@@ -137,7 +159,7 @@ body {
 }
 
 .content-section {
-    background-color: #2e2e2e; /* Lighter background color for content sections */
+    background-color: #2e2e2e; 
     padding: 20px;
     border-radius: 10px;
     margin: 20px;
@@ -166,7 +188,7 @@ body {
     background-color: #ff0000;
 }
 
-/* Responsive layout for mobile devices */
+
 @media (max-width: 768px) {
     .container {
         flex-direction: column;
@@ -183,6 +205,7 @@ body {
     }
 
     #map {
-        height: 300px; /* Adjust the height for mobile view */
+        height: 300px; 
     }
-}
+} 
+

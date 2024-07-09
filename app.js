@@ -2,6 +2,7 @@ const express = require("express");
 require("dotenv").config();
 const path = require("path");
 const axios = require("axios");
+const ollama = require("ollama");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -9,8 +10,19 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(express.static("./public"));
 
+async function getResponse() {
+  const response = await ollama.generate({
+    model: "gemma2",
+    messages: [{ role: "user", content: "Why is the sky blue?" }],
+  });
+  console.log(response.message.content);
+}
+
+getResponse();
+
 app.post("/optimize-route", async (req, res) => {
   const { cities } = req.body; // make it get it from gemma2
+  console.log("hi");
   try {
     const distances = await getDistances(cities);
     const route = kruskal(cities, distances);
