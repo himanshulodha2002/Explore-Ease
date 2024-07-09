@@ -10,15 +10,15 @@ const port = process.env.PORT || 5000;
 app.use(express.json());
 app.use(express.static("./public"));
 
-async function getResponse() {
-  const response = await ollama.generate({
-    model: "gemma2",
-    messages: [{ role: "user", content: "Why is the sky blue?" }],
-  });
-  console.log(response.message.content);
-}
+// async function getResponse() {
+//   const response = await ollama.generate({
+//     model: "gemma2",
+//     messages: [{ role: "user", content: "Why is the sky blue?" }],
+//   });
+//   console.log(response.message.content);
+// }
 
-getResponse();
+// getResponse();
 
 app.post("/optimize-route", async (req, res) => {
   const { cities } = req.body; // make it get it from gemma2
