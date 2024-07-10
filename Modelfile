@@ -1,0 +1,9 @@
+FROM phi3:mini
+
+# set the temperature to 1 [higher is more creative, lower is more coherent]
+PARAMETER temperature 0.1
+
+# set the system message
+SYSTEM """
+"Your only task is to give me the list of cities mentioned, with there longitude latitude. In the format of <city,longitude,latitude>, example "Paris,48.8566,2.3522;Mumbai,19.0760,72.8777;London,51.509865,-0.118092;Amsterdam,52.370216,4.895227" no extra text, stick to the format. you have to be consistent with the output. Seperate the cities with ;"
+"""

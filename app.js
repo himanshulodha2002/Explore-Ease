@@ -13,9 +13,9 @@ app.post("/optimize-route", async (req, res) => {
   const { text: text } = req.body;
   //console.log(text);
   try {
-    const cities = await getCities(text);
+    const citiesStr = await getCities(text);
 
-    const distances = await getDistances(cities);
+    const distances = await getDistances(citiesStr);
     const route = kruskal(cities, distances);
     res.json({ optimizedRoute: route }); /// and make it map to the map
   } catch (error) {
@@ -32,15 +32,18 @@ app.listen(port, () => {
 });
 
 async function getCities(text) {
-  return "delhi,77.2150,28.6439 mumbai,72.8333,19.0760 chennai,80.2707,13.0827 "; // comment this line to use api
+  return [
+    { city: 'Delhi', longitude: 77.209, latitude: 28.6555 },
+    { city: 'London', longitude: 0.1278, latitude: 51.5074 },
+    { city: 'Chennai', longitude: 10, latitude: 13.12 }
+  ];
   // const postData = {
-  //   model: "gemma2",
+  //   model: "getcity",
   //   messages: [
   //     {
   //       role: "user",
   //       content:
-  //         text + // "give me the list of cities mentioned",
-  //         "give me the list of cities mentioned, with there longitude latitude. in the format of <city,longitude,latitude> only no extra text",
+  //         text
   //     },
   //   ],
   //   stream: false,
@@ -51,9 +54,22 @@ async function getCities(text) {
   //     "http://localhost:11434/api/chat",
   //     postData
   //   );
-  //   return response.data.message.content;
+  //   const citiesStr = response.data.message.content;
+  //   console.log(citiesStr);
+    
+  //   const cityArray = citiesStr.split(';').map(cityInfo => {
+  //     const parts = cityInfo.split(',').map(part => part.trim());
+  //     const city = parts[0];
+  //     const longitude = convertCoord(parts[1]);
+  //     const latitude = convertCoord(parts[2]);
+
+  //     return { city, longitude, latitude };
+  //   });
+
+  //   return cityArray;
   // } catch (error) {
   //   console.error("Error:", error);
+
   //   throw error;
   // }
 }
@@ -64,4 +80,13 @@ async function getDistances(cities) {
 
 function kruskal(cities, distances) {
   ////////////////////////////////////////////////// !
+}
+
+function convertCoord(coord) {
+  const value = parseFloat(coord.match(/[\d\.]+/)[0]); // Extract numeric part
+  const direction = coord.trim().slice(-1); // Extract direction (E, W, N, S)
+  if (direction === 'W' || direction === 'S') {
+    return -value;
+  }
+  return value;
 }

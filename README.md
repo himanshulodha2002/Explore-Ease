@@ -13,5 +13,7 @@
    - In a new terminal, run:
      ```
      ollama pull gemma2
+     ollama pull phi3:mini
+     ollama create getcity -f ./Modelfile
      ```
 6. Run `npm start` to start the application.
