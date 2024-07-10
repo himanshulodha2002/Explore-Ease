@@ -25,7 +25,7 @@ document
   .getElementById("inputText")
   .addEventListener("keypress", function (event) {
     if (event.keyCode === 13) {
-      event.preventDefault(); // Prevent the default action to stop from adding a new line
+      event.preventDefault();
       submitText();
     }
   });
