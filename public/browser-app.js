@@ -4,7 +4,6 @@ function submitText() {
 
   const messageDiv = document.createElement("div");
   messageDiv.id = "chatBubbleUser";
-
   messageDiv.textContent = text;
 
   chatHistory.appendChild(messageDiv);

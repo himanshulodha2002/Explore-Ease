@@ -33,6 +33,18 @@ body {
     align-self: flex-end; 
     text-align: right; 
 }
+#chatBubbleAi {
+    background-color: #3bad3b;
+    color: white;
+    border-radius: 20px;
+    padding: 10px;
+    margin: 10px;
+    display: flex;
+    max-width: 60%;
+    word-wrap: break-word;
+    align-self: flex-start; 
+    text-align: right; 
+}
 
 #inputText {
     width: 100%;
