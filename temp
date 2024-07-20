@@ -1,0 +1,194 @@
+const express = require("express");
+require("dotenv").config();
+const path = require("path");
+const axios = require("axios");
+
+const app = express();
+const port = process.env.PORT || 5000;
+
+app.use(express.json());
+app.use(express.static("./public"));
+
+app.post("/optimize-route", async (req, res) => {
+  const { text: text } = req.body;
+  //console.log(text);
+  try {
+    const a = await streamResponse("bengalore to mumbai to daman to delhi");
+    const citiesStr = await getCities(text);
+
+    const distances = await getDistances(citiesStr);
+    const route = kruskal(cities, distances);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to optimize route" });
+  }
+});
+app.get('/stream', (req, res) => {
+  // Setup headers for SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  const sendEventStreamData = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Pass sendEventStreamData as the callback to streamResponse
+  streamResponse("bengalore to mumbai to daman to delhi", sendEventStreamData);
+
+  req.on('close', () => {
+    console.log('Connection closed');
+  });
+});
+
+app.all("*", (req, res) => {
+  res.status(404).send(`<h1>Error 404</h1><h4>Page not found</h4>`);
+});
+
+app.listen(port, () => {
+  console.log(`Server is listening at port ${port}`);
+});
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// async function streamResponse(text, sendDataCallback) {
+//   const postData = {
+//     model: "gemma2",
+//     messages: [
+//       {
+//         role: "user",
+//         content: "I want to go to a road trip to" + text + ". suggest me some places i can visit along the way. give response in under 200 words, in list form, give no description and format it in html style ussse <br> for new lines "
+//       },
+//     ],
+//     stream: true,
+//   };
+//   try {
+//     const response = await axios.post("http://localhost:11434/api/chat", postData, {
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       responseType: 'stream' // This tells axios to handle the response as a stream
+//     });
+
+//     response.data.on('data', (chunk) => {
+//       const parsedChunk = JSON.parse(chunk);
+//       sendDataCallback(parsedChunk);
+//     });
+
+//     response.data.on('end', () => {
+//       sendDataCallback({ message: { content: ' ' } });
+//     });
+
+//   } catch (error) {
+//     console.error("Error:", error);
+//     throw error; // Rethrow or handle error appropriately
+//   }
+// }
+// FROM phi3:mini
+
+// # set the temperature to 1 [higher is more creative, lower is more coherent]
+// PARAMETER temperature 0.1
+
+// # set the system message
+// SYSTEM """
+// "Your only task is to give me the list of cities mentioned, with there longitude latitude. In the format of <city,longitude,latitude>, example "Paris,48.8566,2.3522;Mumbai,19.0760,72.8777;London,51.509865,-0.118092;Amsterdam,52.370216,4.895227" no extra text, stick to the format. you have to be consistent with the output. Seperate the cities with ;"
+// """
+
+async function getCities(text) {
+  return [
+    { city: 'Delhi', longitude: 77.209, latitude: 28.6555 },
+    { city: 'London', longitude: 0.1278, latitude: 51.5074 },
+    { city: 'Chennai', longitude: 10, latitude: 13.12 }
+  ];
+  // const postData = {
+  //   model: "getcity",
+  //   messages: [
+  //     {
+  //       role: "user",
+  //       content:
+  //         text
+  //     },
+  //   ],
+  //   stream: false,
+  // };
+
+  // try {
+  //   const response = await axios.post(
+  //     "http://localhost:11434/api/chat",
+  //     postData
+  //   );
+  //   const citiesStr = response.data.message.content;
+  //   console.log(citiesStr);
+    
+  //   const cityArray = citiesStr.split(';').map(cityInfo => {
+  //     const parts = cityInfo.split(',').map(part => part.trim());
+  //     const city = parts[0];
+  //     const longitude = convertCoord(parts[1]);
+  //     const latitude = convertCoord(parts[2]);
+
+  //     return { city, longitude, latitude };
+  //   });
+
+  //   return cityArray;
+  // } catch (error) {
+  //   console.error("Error:", error);
+
+  //   throw error;
+  // }
+}
+async function getDistances(cities) {
+  //////////////////////////////////////////////// !
+  console.log(cities);
+  return;
+}
+
+function kruskal(cities, distances) {
+  ////////////////////////////////////////////////// !
+}
+
+async function streamResponse(text, sendDataCallback) {
+  const postData = {
+    model: "gemma2",
+    messages: [
+      {
+        role: "user",
+        content: "I want to go to a road trip to" + text + ". suggest me some places i can visit along the way. in under 200 words, its a response in a chatbox"
+      },
+    ],
+    stream: true,
+  };
+  try {
+    const response = await axios.post("http://localhost:11434/api/chat", postData, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      responseType: 'stream' // This tells axios to handle the response as a stream
+    });
+
+    response.data.on('data', (chunk) => {
+      const parsedChunk = JSON.parse(chunk);
+      if (typeof sendDataCallback === "function") {
+        sendDataCallback(parsedChunk);
+      } else {
+        console.error("sendDataCallback is not a function");
+        return;
+      }
+      //sendDataCallback(parsedChunk);
+    });
+
+    response.data.on('end', () => {
+      sendDataCallback(" ");
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+    throw error; // Rethrow or handle error appropriately
+  }
+}
+
+function convertCoord(coord) {
+  const value = parseFloat(coord.match(/[\d\.]+/)[0]); // Extract numeric part
+  const direction = coord.trim().slice(-1); // Extract direction (E, W, N, S)
+  if (direction === 'W' || direction === 'S') {
+    return -value;
+  }
+  return value;
+}
+
