@@ -9,12 +9,11 @@ function submitText() {
   chatHistory.appendChild(messageDiv);
   chatHistory.scrollTop = chatHistory.scrollHeight;
   inputText.value = "";
-  initiateFetch();
+  initiateFetch(text);
 }
-async function initiateFetch() {
+async function initiateFetch(text) {
   await startEventStream(); // Wait for startEventStream to finish
-  await abc();
-  const text = document.getElementById("chatBubbleAi").value;
+  //const text = document.getElementById("chatBubbleAi").value;
 
   try {
     const response = await fetch("/optimize-route", {
@@ -24,10 +23,10 @@ async function initiateFetch() {
       },
       body: JSON.stringify({ text: text }),
     });
-    //const data = await response.json();
+    const data = await response.json();
+    await abc(data);
     //drawRoute(data.cities, data.route);
     //await getPosition(data.position);
-    
   } catch (error) {
     console.error("Failed to fetch data:", error);
   }
@@ -87,70 +86,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 }).addTo(map);
 
-// async function abc() {
-//   if (!navigator.geolocation) {
-//     console.log("Your Browser does not support this Geolocation feature.");
-//   } else {
-//     const getPositionAsync = () =>
-//       new Promise((resolve, reject) => {
-//         navigator.geolocation.getCurrentPosition(resolve, reject);
-//       });
-
-//     async function updateLocation() {
-//       try {
-//         var marker, circle;
-//         const position = await getPositionAsync();
-//         console.log(position);
-//         const lat = position.coords.latitude;
-//         const long = position.coords.longitude;
-//         const accuracy = position.coords.accuracy;
-
-//         if (marker) {
-//           map.removeLayer(marker);
-//         }
-//         if (circle) {
-//           map.removeLayer(circle);
-//         }
-
-//         marker = L.marker([lat, long]).addTo(map);
-//         circle = L.circle([lat, long], { radius: accuracy }).addTo(map);
-
-//         var featureGroup = L.featureGroup([marker, circle]).addTo(map);
-//         // map.fitBounds(featureGroup.getBounds());
-//         L.Routing.control({
-//           waypoints: [
-//             L.latLng(lat, long), //your location
-//             L.latLng(19.076, 72.8777), //city1
-//           ],
-//         }).addTo(map);
-
-//         L.Routing.control({
-//           waypoints: [
-//             L.latLng(19.076, 72.8777), //city1
-//             L.latLng(20.3974, 72.8328), //city2
-//           ],
-//         }).addTo(map);
-
-//         L.Routing.control({
-//           waypoints: [
-//             L.latLng(20.3974, 72.8328), //city2
-//             L.latLng(28.6139, 77.2088), //city3
-//           ],
-//         }).addTo(map);
-//         console.log(
-//           `Your Coordinate is: lat: ${lat} long: ${long} with your GPS accuracy: ${accuracy}`
-//         );
-//       } catch (error) {
-//         console.error("Failed to get position:", error);
-//       }
-//     }
-
-//     // Update location every 5 seconds
-//     setInterval(updateLocation, 5000);
-//   }
-// }
-
-async function abc() {
+async function abc(waypoints) {
   if (!navigator.geolocation) {
     console.log("Your Browser does not support this Geolocation feature.");
   } else {
@@ -159,7 +95,7 @@ async function abc() {
         navigator.geolocation.getCurrentPosition(resolve, reject);
       });
 
-    async function updateLocation() {
+    async function updateLocation(waypoints) {
       try {
         var marker, circle;
         const position = await getPositionAsync();
@@ -167,6 +103,9 @@ async function abc() {
         const lat = position.coords.latitude;
         const long = position.coords.longitude;
         const accuracy = position.coords.accuracy;
+
+        waypoints[0].latitude = lat;
+        waypoints[0].longitude = long;
 
         if (marker) {
           map.removeLayer(marker);
@@ -181,36 +120,29 @@ async function abc() {
         var featureGroup = L.featureGroup([marker, circle]).addTo(map);
         // map.fitBounds(featureGroup.getBounds());
 
-        // Add routes without showing the routing control interface
-        const routingControl1 = L.Routing.control({
-          waypoints: [
-            L.latLng(lat, long),
-            L.latLng(19.076, 72.8777),
-          ],
-          fitSelectedRoutes: false,
-          //createMarker: () => null, // Do not create default markers
-        }).addTo(map);
-        routingControl1.hide(); // Hide the routing control interface
+        map.eachLayer(function (layer) {
+          if (layer instanceof L.Routing.Control) {
+            map.removeLayer(layer);
+          }
+        });
 
-        const routingControl2 = L.Routing.control({
-          waypoints: [
-            L.latLng(19.076, 72.8777),
-            L.latLng(20.3974, 72.8328),
-          ],
-          fitSelectedRoutes: false,
-          //createMarker: () => null,
-        }).addTo(map);
-        routingControl2.hide();
-
-        const routingControl3 = L.Routing.control({
-          waypoints: [
-            L.latLng(20.3974, 72.8328),
-            L.latLng(28.6139, 77.2088),
-          ],
-          fitSelectedRoutes: false,
-          //createMarker: () => null,
-        }).addTo(map);
-        routingControl3.hide();
+        waypoints.forEach((waypoint, index) => {
+          if (index < waypoints.length - 1) {
+            // Ensure there's a next waypoint
+            const routingControl = L.Routing.control({
+              waypoints: [
+                L.latLng(waypoint.latitude, waypoint.longitude),
+                L.latLng(
+                  waypoints[index + 1].latitude,
+                  waypoints[index + 1].longitude
+                ),
+              ],
+              fitSelectedRoutes: false,
+              //createMarker: () => null,
+            }).addTo(map);
+            routingControl.hide();
+          }
+        });
 
         console.log(
           `Your Coordinate is: lat: ${lat} long: ${long} with your GPS accuracy: ${accuracy}`
@@ -221,12 +153,19 @@ async function abc() {
     }
 
     // Update location every 5 seconds
-    setInterval(updateLocation, 5000);
+    // const waypoints = [
+    //   { latitude: 0, longitude: 0 }, // Current location
+    //   { latitude: 19.076, longitude: 72.8777 },
+    //   { latitude: 20.3974, longitude: 72.8328 },
+    //   { latitude: 28.6139, longitude: 77.2088 }
+    // ];
+    setInterval(updateLocation(waypoints), 5000);
 
     // Hide the routing control interface
-    const style = document.createElement('style');
-    style.type = 'text/css';
-    style.innerHTML = '.leaflet-routing-container { display: none !important; }';
-    document.getElementsByTagName('head')[0].appendChild(style);
+    const style = document.createElement("style");
+    style.type = "text/css";
+    style.innerHTML =
+      ".leaflet-routing-container { display: none !important; }";
+    document.getElementsByTagName("head")[0].appendChild(style);
   }
 }

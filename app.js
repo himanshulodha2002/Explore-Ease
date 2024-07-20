@@ -20,8 +20,9 @@ app.post("/optimize-route", async (req, res) => {
     //const citiesStr = await getCities(text);
     //const distances = await getDistances(citiesStr);
     // const route = kruskal(citiesStr, distances);
-    console.log("text");
-    res.json({data});
+    console.log(text);
+    const data = getData(text);
+    res.json(data);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to optimize route" });
@@ -158,8 +159,14 @@ async function streamResponse(text, sendDataCallback) {
 
 
 function getData(text) {
-  const cities = text.split(" to ");
-  return cities;
+  //const cities = text.split(" to ");
+  const data = [
+    { latitude: 0, longitude: 0 }, // Current location
+    { latitude: 19.076, longitude: 72.8777 },
+    { latitude: 20.3974, longitude: 72.8328 },
+    { latitude: 28.6139, longitude: 77.2088 }
+  ];
+  return data;
 }
 
 // function convertCoord(coord) {
