@@ -169,6 +169,7 @@ function getData(text) {
   return data;
 }
 
+
 // function convertCoord(coord) {
 //   const value = parseFloat(coord.match(/[\d\.]+/)[0]); // Extract numeric part
 //   const direction = coord.trim().slice(-1); // Extract direction (E, W, N, S)
@@ -177,4 +178,3 @@ function getData(text) {
 //   }
 //   return value;
 // }
-

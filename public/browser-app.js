@@ -12,6 +12,7 @@ function submitText() {
   initiateFetch(text);
 }
 async function initiateFetch(text) {
+  
   await startEventStream(); // Wait for startEventStream to finish
   //const text = document.getElementById("chatBubbleAi").value;
 
@@ -169,3 +170,22 @@ async function abc(waypoints) {
     document.getElementsByTagName("head")[0].appendChild(style);
   }
 }
+
+
+function drawRoute(cities, route) {
+  var latlngs = [];
+  cities.forEach((city) => {
+    latlngs.push([city.latitude, city.longitude]);
+  });
+
+  var polyline = L.polyline(latlngs, { color: "red" }).addTo(map);
+  map.fitBounds(polyline.getBounds());
+}
+
+function getPosition(position) {
+  var marker = L.marker([position.latitude, position.longitude]).addTo(map);
+  map.setView([position.latitude, position.longitude], 13);
+}
+
+
+
