@@ -15,15 +15,19 @@ const AI_PROVIDER = process.env.AI_PROVIDER || "ollama";
 
 // Ollama Configuration
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "gemma2";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2";
 
 // GitHub Models Configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_MODEL = process.env.GITHUB_MODEL || "gpt-4o-mini";
+const GITHUB_MODEL = process.env.GITHUB_MODEL || "gpt-4o";
 
 // Gemini Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-exp";
+
+// Generation Parameters
+const TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE) || 0.7;
+const MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS) || 500;
 
 // ============================================================
 // PROVIDER INITIALIZATION
@@ -123,7 +127,10 @@ async function streamGitHubModels(userMessage, onChunk, onError, onComplete) {
   }
 
   try {
-    const stream = await githubClient.chat.completions.create({
+    // Check if using reasoning models (o1-preview, o1-mini)
+    const isReasoningModel = GITHUB_MODEL.startsWith("o1");
+
+    const requestParams = {
       model: GITHUB_MODEL,
       messages: [
         {
@@ -132,9 +139,15 @@ async function streamGitHubModels(userMessage, onChunk, onError, onComplete) {
         },
       ],
       stream: true,
-      max_tokens: 500,
-      temperature: 0.7,
-    });
+      max_tokens: MAX_TOKENS,
+    };
+
+    // Reasoning models don't support temperature parameter
+    if (!isReasoningModel) {
+      requestParams.temperature = TEMPERATURE;
+    }
+
+    const stream = await githubClient.chat.completions.create(requestParams);
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content;
@@ -149,7 +162,13 @@ async function streamGitHubModels(userMessage, onChunk, onError, onComplete) {
     }
   } catch (error) {
     console.error("GitHub Models API error:", error.message);
-    onError(error);
+    if (error.status === 429) {
+      onError(new Error("Rate limit exceeded. Please wait before trying again."));
+    } else if (error.status === 401) {
+      onError(new Error("Invalid GitHub token. Please check your GITHUB_TOKEN."));
+    } else {
+      onError(error);
+    }
   }
 }
 
@@ -171,7 +190,31 @@ async function streamGemini(userMessage, onChunk, onError, onComplete) {
   }
 
   try {
-    const model = geminiClient.getGenerativeModel({ model: GEMINI_MODEL });
+    const model = geminiClient.getGenerativeModel({
+      model: GEMINI_MODEL,
+      generationConfig: {
+        temperature: TEMPERATURE,
+        maxOutputTokens: MAX_TOKENS,
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_MEDIUM_AND_ABOVE",
+        },
+      ],
+    });
 
     const result = await model.generateContentStream(userMessage);
 
@@ -185,7 +228,17 @@ async function streamGemini(userMessage, onChunk, onError, onComplete) {
     onComplete();
   } catch (error) {
     console.error("Gemini API error:", error.message);
-    onError(error);
+
+    // Handle specific Gemini errors
+    if (error.message?.includes("quota")) {
+      onError(new Error("Gemini API quota exceeded. Please check your quota limits."));
+    } else if (error.message?.includes("API key")) {
+      onError(new Error("Invalid Gemini API key. Please check your GEMINI_API_KEY."));
+    } else if (error.message?.includes("safety")) {
+      onError(new Error("Content was blocked by Gemini safety filters."));
+    } else {
+      onError(error);
+    }
   }
 }
 
