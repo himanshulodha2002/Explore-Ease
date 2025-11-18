@@ -12,9 +12,8 @@ function submitText() {
   initiateFetch(text);
 }
 async function initiateFetch(text) {
-  
+
   await startEventStream(); // Wait for startEventStream to finish
-  //const text = document.getElementById("chatBubbleAi").value;
 
   try {
     const response = await fetch("/optimize-route", {
@@ -25,12 +24,56 @@ async function initiateFetch(text) {
       body: JSON.stringify({ text: text }),
     });
     const data = await response.json();
-    await abc(data);
-    //drawRoute(data.cities, data.route);
-    //await getPosition(data.position);
+
+    // Check if we got valid waypoints
+    if (data.waypoints && data.waypoints.length > 0) {
+      console.log(`Route optimized with ${data.waypoints.length} waypoints`);
+      console.log(`Total distance: ${data.totalDistance?.toFixed(2) || 'N/A'} km`);
+
+      // Display route on map
+      await abc(data.waypoints);
+
+      // Show route info in chat
+      if (data.totalDistance) {
+        displayRouteInfo(data);
+      }
+    } else {
+      console.error("No waypoints received");
+      displayError("Could not find cities in your input. Please try again with city names.");
+    }
   } catch (error) {
     console.error("Failed to fetch data:", error);
+    displayError("Failed to optimize route. Please try again.");
   }
+}
+
+function displayRouteInfo(data) {
+  const chatHistory = document.getElementById("chatHistory");
+  const infoDiv = document.createElement("div");
+  infoDiv.id = "routeInfo";
+  infoDiv.style.cssText = "background: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;";
+
+  let routeText = `📍 Route optimized with ${data.route.length} cities\n`;
+  routeText += `📏 Total distance: ${data.totalDistance.toFixed(2)} km\n\n`;
+  routeText += `Route order:\n`;
+  data.route.forEach((city, index) => {
+    routeText += `${index + 1}. ${city.city || 'Point ' + index}\n`;
+  });
+
+  infoDiv.textContent = routeText;
+  infoDiv.style.whiteSpace = "pre-line";
+  chatHistory.appendChild(infoDiv);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+function displayError(message) {
+  const chatHistory = document.getElementById("chatHistory");
+  const errorDiv = document.createElement("div");
+  errorDiv.id = "chatBubbleAi";
+  errorDiv.style.cssText = "background: #ffebee; color: #c62828;";
+  errorDiv.textContent = message;
+  chatHistory.appendChild(errorDiv);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
 function setupEventStream() {
