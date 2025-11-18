@@ -6,11 +6,11 @@ const axios = require("axios");
 const helmet = require("helmet");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
+const { streamAIResponse, getProviderInfo } = require("./aiProviders");
 
 // Initialize express app
 const app = express();
 const port = process.env.PORT || 5000;
-const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 
 // Security middleware
 app.use(helmet({
@@ -114,6 +114,12 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// AI Provider info endpoint
+app.get("/api/provider-info", (req, res) => {
+  const providerInfo = getProviderInfo();
+  res.json(providerInfo);
+});
+
 // Catch-all for undefined routes
 app.all("*", (req, res) => {
   res.status(404).json({
@@ -133,9 +139,14 @@ app.use((err, req, res, next) => {
 
 // Start the server
 app.listen(port, () => {
+  const providerInfo = getProviderInfo();
   console.log(`✅ Server is running on http://localhost:${port}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🤖 Ollama URL: ${OLLAMA_BASE_URL}`);
+  console.log(`🤖 AI Provider: ${providerInfo.provider}`);
+  console.log(`📦 Model: ${providerInfo.model || "N/A"}`);
+  if (!providerInfo.configured) {
+    console.warn(`⚠️  Warning: AI provider '${providerInfo.provider}' is not properly configured!`);
+  }
 });
 
 // ============================================================
@@ -143,67 +154,45 @@ app.listen(port, () => {
 // ============================================================
 
 /**
- * Streams AI response from Ollama to the client
+ * Streams AI response from the configured provider to the client
  * @param {string} text - User input text
  * @param {Function} sendDataCallback - Callback to send data chunks
  */
-
 async function streamResponse(text, sendDataCallback) {
   if (typeof sendDataCallback !== "function") {
     throw new TypeError("sendDataCallback must be a function");
   }
 
-  const postData = {
-    model: "gemma2",
-    messages: [
-      {
-        role: "user",
-        content: `I want to go on a road trip to ${text}. Suggest some places I can visit along the way. Keep your response under 200 words.`,
-      },
-    ],
-    stream: true,
+  const userMessage = `I want to go on a road trip to ${text}. Suggest some places I can visit along the way. Keep your response under 200 words.`;
+
+  // Callbacks for the AI provider
+  const onChunk = (content) => {
+    sendDataCallback({
+      message: { content },
+      done: false,
+    });
+  };
+
+  const onError = (error) => {
+    console.error("AI Provider error:", error.message);
+    sendDataCallback({
+      error: error.message || "Failed to get AI response",
+    });
+  };
+
+  const onComplete = () => {
+    console.log("AI stream completed successfully");
+    sendDataCallback({
+      message: { content: "" },
+      done: true,
+    });
   };
 
   try {
-    const response = await axios.post(
-      `${OLLAMA_BASE_URL}/api/chat`,
-      postData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        responseType: "stream",
-        timeout: 30000, // 30 second timeout
-      }
-    );
-
-    response.data.on("data", (chunk) => {
-      try {
-        const parsedChunk = JSON.parse(chunk.toString());
-        sendDataCallback(parsedChunk);
-      } catch (parseError) {
-        console.error("Failed to parse chunk:", parseError.message);
-      }
-    });
-
-    response.data.on("end", () => {
-      console.log("Stream completed successfully");
-    });
-
-    response.data.on("error", (error) => {
-      console.error("Stream error:", error.message);
-      sendDataCallback({ error: "Stream interrupted" });
-    });
+    await streamAIResponse(userMessage, onChunk, onError, onComplete);
   } catch (error) {
-    console.error("Ollama API error:", error.message);
-    if (error.code === "ECONNREFUSED") {
-      sendDataCallback({
-        error: "Cannot connect to Ollama. Please ensure Ollama is running."
-      });
-    } else {
-      sendDataCallback({ error: "Failed to get AI response" });
-    }
-    throw error;
+    console.error("Stream response error:", error.message);
+    onError(error);
   }
 }
 
