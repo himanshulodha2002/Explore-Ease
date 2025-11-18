@@ -3,38 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExploreEase - Home</title>
+    <meta name="description" content="ExploreEase - AI-powered travel planning chatbot with intelligent route optimization and interactive maps">
+    <meta name="keywords" content="travel planner, route optimization, AI chatbot, travel recommendations, trip planner">
+    <meta name="author" content="ExploreEase">
+    <meta name="theme-color" content="#1e1e1e">
+
+    <!-- Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="ExploreEase - AI Travel Planner">
+    <meta property="og:description" content="Plan your perfect trip with AI-powered recommendations and optimized routes">
+    <meta property="og:type" content="website">
+
+    <title>ExploreEase - AI Travel Planning & Route Optimization</title>
+
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- leaflet routing machine js -->
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+    <!-- JavaScript Libraries -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin="anonymous" defer></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js" defer></script>
 </head>
 <body>
 
-    <div class="menu">
-        <a href="index.html">Home</a>
+    <!-- Navigation Menu -->
+    <nav class="menu" role="navigation" aria-label="Main navigation">
+        <a href="index.html" aria-current="page">Home</a>
         <a href="about.html">About</a>
-        <!-- <a href="history.html">History</a> -->
-    </div>
+    </nav>
 
-    <div id="home" class="container">
-        <div class="left">
+    <!-- Main Content -->
+    <main id="home" class="container">
+        <!-- Chat Section -->
+        <section class="left" aria-label="Chat interface">
             <div class="input-container">
-                <h2>ExploreEase</h2>
-                <div class="chat-history" id="chatHistory"></div> <!-- Chat messages will be displayed here -->
-                <div class="textarea-container">
-                    <textarea id="inputText" placeholder="Enter text here"></textarea>
-                    <button id="sendButton" onclick="submitText()" ><img src="./icons/send_button.png"></button>
+                <h1>ExploreEase</h1>
+                <div class="chat-history"
+                     id="chatHistory"
+                     role="log"
+                     aria-live="polite"
+                     aria-label="Chat messages">
                 </div>
+                <form class="textarea-container" onsubmit="event.preventDefault(); submitText();" aria-label="Message input">
+                    <label for="inputText" class="sr-only">Enter your travel destinations</label>
+                    <textarea id="inputText"
+                              placeholder="Enter your travel destinations (e.g., 'Mumbai to Delhi to Goa')"
+                              aria-label="Travel destination input"
+                              required></textarea>
+                    <button id="sendButton"
+                            type="submit"
+                            aria-label="Send message">
+                        <img src="./icons/send_button.png" alt="">
+                    </button>
+                </form>
             </div>
-        </div>
-        <div class="right">
-            <h2></h2>
-            <div id="map" class="responsive-map"></div>
-        </div>
-    </div>
+        </section>
+
+        <!-- Map Section -->
+        <section class="right" aria-label="Interactive map">
+            <h2 class="sr-only">Route Map</h2>
+            <div id="map"
+                 class="responsive-map"
+                 role="application"
+                 aria-label="Interactive travel route map">
+            </div>
+        </section>
+    </main>
+
+    <!-- Screen Reader Only Class (add to CSS) -->
+    <style>
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+
     <script src="./browser-app.js"></script>
 
 </body>

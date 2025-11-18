@@ -3,116 +3,154 @@ const express = require("express");
 require("dotenv").config();
 const path = require("path");
 const axios = require("axios");
+const helmet = require("helmet");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 
 // Initialize express app
 const app = express();
 const port = process.env.PORT || 5000;
+const OLLAMA_BASE_URL = process.env.OLLAMA_URL || "http://localhost:11434";
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      imgSrc: ["'self'", "data:", "https://*.tile.openstreetmap.org"],
+      connectSrc: ["'self'", "https://router.project-osrm.org"],
+    },
+  },
+}));
+app.use(cors());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+});
+app.use("/api/", limiter);
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "10kb" })); // Limit body size
 app.use(express.static("./public"));
 
-// Route to optimize route
+/**
+ * Route to optimize travel route based on user input
+ * @route POST /optimize-route
+ */
 app.post("/optimize-route", async (req, res) => {
   try {
-    const text = req.body.text;
-    // Assuming getCities, getDistances, and kruskal are defined elsewhere in app.js
-    //const citiesStr = await getCities(text);
-    //const distances = await getDistances(citiesStr);
-    // const route = kruskal(citiesStr, distances);
-    console.log(text);
-    const data = getData(text);
+    const { text } = req.body;
+
+    // Input validation
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return res.status(400).json({
+        error: "Invalid input. Please provide a valid text string."
+      });
+    }
+
+    if (text.length > 500) {
+      return res.status(400).json({
+        error: "Input too long. Please limit your input to 500 characters."
+      });
+    }
+
+    console.log("Processing route optimization for:", text);
+
+    // TODO: Implement actual city extraction and route optimization
+    // const cities = await getCities(text);
+    // const distances = await getDistances(cities);
+    // const route = kruskal(cities, distances);
+
+    const data = getMockRouteData(text);
     res.json(data);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to optimize route" });
+    console.error("Route optimization error:", error.message);
+    res.status(500).json({
+      error: "Failed to optimize route. Please try again later."
+    });
   }
 });
 
-// Route for streaming responses
+/**
+ * Route for streaming AI responses using Server-Sent Events
+ * @route GET /stream
+ */
 app.get("/stream", (req, res) => {
   // Setup headers for SSE
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Disable buffering in nginx
 
   const sendEventStreamData = (data) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    }
   };
 
-  // Assuming streamResponse is defined elsewhere in app.js
-  const response = streamResponse("bengalore to mumbai to daman to delhi", sendEventStreamData);
+  // Get route from query parameter
+  const route = req.query.route || "bengalore to mumbai to daman to delhi";
 
+  try {
+    streamResponse(route, sendEventStreamData);
+  } catch (error) {
+    console.error("Stream error:", error.message);
+    sendEventStreamData({ error: "Failed to stream response" });
+  }
 
   req.on("close", () => {
-    console.log("Connection closed");
+    console.log("SSE connection closed");
+    res.end();
   });
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // Catch-all for undefined routes
 app.all("*", (req, res) => {
-  res.status(404).send(`<h1>Error 404</h1><h4>Page not found</h4>`);
+  res.status(404).json({
+    error: "Route not found",
+    message: "The requested endpoint does not exist"
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({
+    error: "Internal server error",
+    message: process.env.NODE_ENV === "development" ? err.message : "Something went wrong"
+  });
 });
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server is listening at port ${port}`);
+  console.log(`✅ Server is running on http://localhost:${port}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🤖 Ollama URL: ${OLLAMA_BASE_URL}`);
 });
 
-// Utility functions (assuming these are defined and used within app.js)
-// async function getCities(text) {
-//   const postData = {
-//     model: "getcity",
-//     messages: [
-//       {
-//         role: "user",
-//         content: text,
-//       },
-//     ],
-//     stream: false,
-//   };
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
 
-//   try {
-//     const response = await axios.post(
-//       "http://localhost:11434/api/chat",
-//       postData
-//     );
-//     const citiesStr = response.data.message.content;
-//     console.log(citiesStr);
-
-//     const cityArray = citiesStr.split(";").map((cityInfo) => {
-//       const parts = cityInfo.split(",").map((part) => part.trim());
-//       const city = parts[0];
-//       const longitude = convertCoord(parts[1]);
-//       const latitude = convertCoord(parts[2]);
-
-//       return { city, longitude, latitude };
-//     });
-
-//     return cityArray;
-//   } catch (error) {
-//     console.error("Error:", error);
-
-//     throw error;
-//   }
-// }
-
-// async function getDistances(cities) {
-//   //////////////////////////////////////////////// !
-//   console.log(cities);
-//   return;
-// }
-
-// function kruskal(cities, distances) {
-//   // Implementation
-// }
+/**
+ * Streams AI response from Ollama to the client
+ * @param {string} text - User input text
+ * @param {Function} sendDataCallback - Callback to send data chunks
+ */
 
 async function streamResponse(text, sendDataCallback) {
-  let responseBody = '';
-  // Type check for sendDataCallback
   if (typeof sendDataCallback !== "function") {
-    console.error("sendDataCallback must be a function");
-    return; // Exit the function if sendDataCallback is not a function
+    throw new TypeError("sendDataCallback must be a function");
   }
 
   const postData = {
@@ -120,10 +158,7 @@ async function streamResponse(text, sendDataCallback) {
     messages: [
       {
         role: "user",
-        content:
-          "I want to go to a road trip to" +
-          text +
-          ". suggest me some places i can visit along the way. in under 200 words, its a response in a chatbox",
+        content: `I want to go on a road trip to ${text}. Suggest some places I can visit along the way. Keep your response under 200 words.`,
       },
     ],
     stream: true,
@@ -131,50 +166,80 @@ async function streamResponse(text, sendDataCallback) {
 
   try {
     const response = await axios.post(
-      "http://localhost:11434/api/chat",
+      `${OLLAMA_BASE_URL}/api/chat`,
       postData,
       {
         headers: {
           "Content-Type": "application/json",
         },
-        responseType: "stream", // This tells axios to handle the response as a stream
+        responseType: "stream",
+        timeout: 30000, // 30 second timeout
       }
     );
 
     response.data.on("data", (chunk) => {
-      const parsedChunk = JSON.parse(chunk);
-      responseBody += chunk;
-      sendDataCallback(parsedChunk);
+      try {
+        const parsedChunk = JSON.parse(chunk.toString());
+        sendDataCallback(parsedChunk);
+      } catch (parseError) {
+        console.error("Failed to parse chunk:", parseError.message);
+      }
     });
 
     response.data.on("end", () => {
-      sendDataCallback(" "); // Consider changing this to a more meaningful end-of-stream signal if needed
-      return responseBody;
+      console.log("Stream completed successfully");
+    });
+
+    response.data.on("error", (error) => {
+      console.error("Stream error:", error.message);
+      sendDataCallback({ error: "Stream interrupted" });
     });
   } catch (error) {
-    console.error("Error:", error);
-    throw error; // Rethrow or handle error appropriately
+    console.error("Ollama API error:", error.message);
+    if (error.code === "ECONNREFUSED") {
+      sendDataCallback({
+        error: "Cannot connect to Ollama. Please ensure Ollama is running."
+      });
+    } else {
+      sendDataCallback({ error: "Failed to get AI response" });
+    }
+    throw error;
   }
 }
 
 
-function getData(text) {
-  //const cities = text.split(" to ");
-  const data = [
-    { latitude: 0, longitude: 0 }, // Current location
-    { latitude: 19.076, longitude: 72.8777 },
-    { latitude: 20.3974, longitude: 72.8328 },
-    { latitude: 28.6139, longitude: 77.2088 }
+/**
+ * Returns mock route data for testing
+ * TODO: Replace with actual city extraction and route optimization
+ * @param {string} text - User input text
+ * @returns {Array} Array of waypoint coordinates
+ */
+function getMockRouteData(text) {
+  // Mock data - Current location will be updated by frontend geolocation
+  return [
+    { latitude: 0, longitude: 0 }, // Current location (placeholder)
+    { latitude: 19.076, longitude: 72.8777 }, // Mumbai
+    { latitude: 20.3974, longitude: 72.8328 }, // Daman
+    { latitude: 28.6139, longitude: 77.2088 }  // Delhi
   ];
-  return data;
 }
 
+/**
+ * Converts coordinate string to decimal degrees
+ * @param {string} coord - Coordinate string (e.g., "72.8777E")
+ * @returns {number} Decimal degrees
+ */
+function convertCoordinate(coord) {
+  const match = coord.match(/[\d.]+/);
+  if (!match) {
+    throw new Error(`Invalid coordinate format: ${coord}`);
+  }
 
-// function convertCoord(coord) {
-//   const value = parseFloat(coord.match(/[\d\.]+/)[0]); // Extract numeric part
-//   const direction = coord.trim().slice(-1); // Extract direction (E, W, N, S)
-//   if (direction === 'W' || direction === 'S') {
-//     return -value;
-//   }
-//   return value;
-// }
+  const value = parseFloat(match[0]);
+  const direction = coord.trim().slice(-1).toUpperCase();
+
+  if (direction === "W" || direction === "S") {
+    return -value;
+  }
+  return value;
+}

@@ -3,31 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExploreEase - About</title>
+    <meta name="description" content="Learn about ExploreEase - Your AI-powered travel companion for route optimization and trip planning">
+    <meta name="keywords" content="about, travel planner, AI travel assistant, route optimization">
+    <meta name="author" content="ExploreEase">
+    <meta name="theme-color" content="#1e1e1e">
+
+    <title>About ExploreEase - AI Travel Planning Assistant</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="menu">
+    <!-- Navigation Menu -->
+    <nav class="menu" role="navigation" aria-label="Main navigation">
         <a href="index.html">Home</a>
-        <a href="about.html">About</a>
-        <!-- <a href="history.html">History</a> -->
-    </div>
+        <a href="about.html" aria-current="page">About</a>
+    </nav>
 
-    <div id="about" class="content-section">
-        <h1>About ExploreEase</h1>
-        <p>Welcome to ExploreEase, your ultimate travel companion designed to make your journeys as smooth and efficient as possible. Whether you're planning a road trip, a city tour, or simply exploring new destinations, ExploreEase is here to help you find the fastest routes to cover all the places on your itinerary.</p>
-        <p>Our platform is easy to use: just enter the names of the places you want to visit, and ExploreEase will calculate the quickest path for you, saving you time and ensuring you make the most of your travels. We utilize advanced algorithms and real-time traffic data to provide accurate and up-to-date routing information.</p>
-        <p>ExploreEase is perfect for:
-        <ul>
-            <li>Travel enthusiasts looking to explore new destinations efficiently.</li>
-            <li>Families planning vacations and wanting to maximize their time.</li>
-            <li>Professionals needing to navigate multiple locations for work.</li>
-            <li>Anyone who loves discovering new places without the hassle of complicated route planning.</li>
-        </ul>
-        </p>
-        <p>Our mission is to make travel planning stress-free and enjoyable, so you can focus on experiencing the joy of exploring new places. Let ExploreEase guide you on your next adventure!</p>
-    </div>
+    <!-- Main Content -->
+    <main id="about" class="content-section">
+        <article>
+            <h1>About ExploreEase</h1>
+
+            <section aria-labelledby="intro">
+                <h2 id="intro" class="sr-only">Introduction</h2>
+                <p>Welcome to <strong>ExploreEase</strong>, your ultimate travel companion designed to make your journeys as smooth and efficient as possible. Whether you're planning a road trip, a city tour, or simply exploring new destinations, ExploreEase is here to help you find the fastest routes to cover all the places on your itinerary.</p>
+            </section>
+
+            <section aria-labelledby="how-it-works">
+                <h2 id="how-it-works" class="sr-only">How It Works</h2>
+                <p>Our platform is easy to use: just enter the names of the places you want to visit, and ExploreEase will calculate the quickest path for you, saving you time and ensuring you make the most of your travels. We utilize advanced AI algorithms and interactive mapping to provide accurate and up-to-date routing information.</p>
+            </section>
+
+            <section aria-labelledby="perfect-for">
+                <h2 id="perfect-for">ExploreEase is perfect for:</h2>
+                <ul>
+                    <li>Travel enthusiasts looking to explore new destinations efficiently</li>
+                    <li>Families planning vacations and wanting to maximize their time</li>
+                    <li>Professionals needing to navigate multiple locations for work</li>
+                    <li>Anyone who loves discovering new places without the hassle of complicated route planning</li>
+                </ul>
+            </section>
+
+            <section aria-labelledby="mission">
+                <h2 id="mission" class="sr-only">Our Mission</h2>
+                <p>Our mission is to make travel planning stress-free and enjoyable, so you can focus on experiencing the joy of exploring new places. Let ExploreEase guide you on your next adventure!</p>
+            </section>
+        </article>
+    </main>
+
+    <style>
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
 
 </body>
 </html>
