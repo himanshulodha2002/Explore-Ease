@@ -12,10 +12,15 @@ function submitText() {
   initiateFetch(text);
 }
 async function initiateFetch(text) {
-
-  await startEventStream(); // Wait for startEventStream to finish
+  let loadingIndicator;
 
   try {
+    // Start event stream and show loading
+    const streamPromise = startEventStream();
+    loadingIndicator = showLoading();
+
+    await streamPromise; // Wait for startEventStream to finish
+
     const response = await fetch("/optimize-route", {
       method: "POST",
       headers: {
@@ -23,7 +28,11 @@ async function initiateFetch(text) {
       },
       body: JSON.stringify({ text: text }),
     });
+
     const data = await response.json();
+
+    // Hide loading indicator
+    hideLoading();
 
     // Check if we got valid waypoints
     if (data.waypoints && data.waypoints.length > 0) {
@@ -43,7 +52,8 @@ async function initiateFetch(text) {
     }
   } catch (error) {
     console.error("Failed to fetch data:", error);
-    displayError("Failed to optimize route. Please try again.");
+    hideLoading();
+    displayError("Failed to optimize route. Please check your connection and try again.");
   }
 }
 
@@ -51,13 +61,15 @@ function displayRouteInfo(data) {
   const chatHistory = document.getElementById("chatHistory");
   const infoDiv = document.createElement("div");
   infoDiv.id = "routeInfo";
-  infoDiv.style.cssText = "background: #e3f2fd; padding: 10px; margin: 10px 0; border-radius: 5px; font-size: 12px;";
 
-  let routeText = `📍 Route optimized with ${data.route.length} cities\n`;
-  routeText += `📏 Total distance: ${data.totalDistance.toFixed(2)} km\n\n`;
-  routeText += `Route order:\n`;
+  let routeText = `🗺️ Route Optimized!\n\n`;
+  routeText += `📍 Cities: ${data.route.length}\n`;
+  routeText += `📏 Total Distance: ${data.totalDistance.toFixed(2)} km\n`;
+  routeText += `⚡ Algorithm: Kruskal's MST\n\n`;
+  routeText += `🛣️ Optimal Route:\n`;
   data.route.forEach((city, index) => {
-    routeText += `${index + 1}. ${city.city || 'Point ' + index}\n`;
+    const emoji = index === 0 ? '🏁' : index === data.route.length - 1 ? '🎯' : '📍';
+    routeText += `${emoji} ${index + 1}. ${city.city || 'Point ' + index}\n`;
   });
 
   infoDiv.textContent = routeText;
@@ -69,11 +81,28 @@ function displayRouteInfo(data) {
 function displayError(message) {
   const chatHistory = document.getElementById("chatHistory");
   const errorDiv = document.createElement("div");
-  errorDiv.id = "chatBubbleAi";
-  errorDiv.style.cssText = "background: #ffebee; color: #c62828;";
-  errorDiv.textContent = message;
+  errorDiv.className = "error-message";
+  errorDiv.textContent = `❌ ${message}`;
   chatHistory.appendChild(errorDiv);
   chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+function showLoading() {
+  const chatHistory = document.getElementById("chatHistory");
+  const loadingDiv = document.createElement("div");
+  loadingDiv.className = "loading-dots";
+  loadingDiv.id = "loadingIndicator";
+  loadingDiv.textContent = "Optimizing route";
+  chatHistory.appendChild(loadingDiv);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+  return loadingDiv;
+}
+
+function hideLoading() {
+  const loadingDiv = document.getElementById("loadingIndicator");
+  if (loadingDiv) {
+    loadingDiv.remove();
+  }
 }
 
 function setupEventStream() {
