@@ -3,23 +3,66 @@ const express = require("express");
 require("dotenv").config();
 const path = require("path");
 const axios = require("axios");
+const helmet = require("helmet");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 const { kruskal, approximateTSP } = require("./algo");
+const { streamAIResponse, getProviderInfo } = require("./aiProviders");
 
 // Initialize express app
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      imgSrc: ["'self'", "data:", "https://*.tile.openstreetmap.org"],
+      connectSrc: ["'self'", "https://router.project-osrm.org"],
+    },
+  },
+}));
+app.use(cors());
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+});
+app.use("/api/", limiter);
+
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "10kb" })); // Limit body size
 app.use(express.static("./public"));
 
-// Route to optimize route
+/**
+ * Route to optimize travel route based on user input
+ * @route POST /optimize-route
+ */
 app.post("/optimize-route", async (req, res) => {
   try {
-    const text = req.body.text;
+    const { text } = req.body;
+
+    // Input validation
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return res.status(400).json({
+        error: "Invalid input. Please provide a valid text string."
+      });
+    }
+
+    if (text.length > 500) {
+      return res.status(400).json({
+        error: "Input too long. Please limit your input to 500 characters."
+      });
+    }
+
     console.log("Received text:", text);
 
-    // Extract cities from text using Ollama
+    // Extract cities from text using AI or fallback
     const cities = await getCities(text);
 
     if (!cities || cities.length === 0) {
@@ -59,40 +102,85 @@ app.post("/optimize-route", async (req, res) => {
   }
 });
 
-// Route for streaming responses
+/**
+ * Route for streaming AI responses using Server-Sent Events
+ * @route GET /stream
+ */
 app.get("/stream", (req, res) => {
   // Setup headers for SSE
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no"); // Disable buffering in nginx
 
   const sendEventStreamData = (data) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    }
   };
 
-  // Assuming streamResponse is defined elsewhere in app.js
-  const response = streamResponse("bengalore to mumbai to daman to delhi", sendEventStreamData);
+  // Get route from query parameter
+  const route = req.query.route || "bengalore to mumbai to daman to delhi";
 
+  try {
+    streamResponse(route, sendEventStreamData);
+  } catch (error) {
+    console.error("Stream error:", error.message);
+    sendEventStreamData({ error: "Failed to stream response" });
+  }
 
   req.on("close", () => {
-    console.log("Connection closed");
+    console.log("SSE connection closed");
+    res.end();
   });
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// AI Provider info endpoint
+app.get("/api/provider-info", (req, res) => {
+  const providerInfo = getProviderInfo();
+  res.json(providerInfo);
 });
 
 // Catch-all for undefined routes
 app.all("*", (req, res) => {
-  res.status(404).send(`<h1>Error 404</h1><h4>Page not found</h4>`);
+  res.status(404).json({
+    error: "Route not found",
+    message: "The requested endpoint does not exist"
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err);
+  res.status(500).json({
+    error: "Internal server error",
+    message: process.env.NODE_ENV === "development" ? err.message : "Something went wrong"
+  });
 });
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server is listening at port ${port}`);
+  const providerInfo = getProviderInfo();
+  console.log(`✅ Server is running on http://localhost:${port}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🤖 AI Provider: ${providerInfo.provider}`);
+  console.log(`📦 Model: ${providerInfo.model || "N/A"}`);
+  if (!providerInfo.configured) {
+    console.warn(`⚠️  Warning: AI provider '${providerInfo.provider}' is not properly configured!`);
+  }
 });
 
-// Utility functions
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
 
 /**
- * Extract cities from natural language text using Ollama
+ * Extract cities from natural language text using AI
  * @param {string} text - User input text containing city names
  * @returns {Array} Array of city objects with coordinates
  */
@@ -205,54 +293,45 @@ function convertCoord(coord) {
   return value;
 }
 
+/**
+ * Streams AI response from the configured provider to the client
+ * @param {string} text - User input text
+ * @param {Function} sendDataCallback - Callback to send data chunks
+ */
 async function streamResponse(text, sendDataCallback) {
-  let responseBody = '';
-  // Type check for sendDataCallback
   if (typeof sendDataCallback !== "function") {
-    console.error("sendDataCallback must be a function");
-    return; // Exit the function if sendDataCallback is not a function
+    throw new TypeError("sendDataCallback must be a function");
   }
 
-  const postData = {
-    model: "gemma2",
-    messages: [
-      {
-        role: "user",
-        content:
-          "I want to go to a road trip to" +
-          text +
-          ". suggest me some places i can visit along the way. in under 200 words, its a response in a chatbox",
-      },
-    ],
-    stream: true,
+  const userMessage = `I want to go on a road trip to ${text}. Suggest some places I can visit along the way. Keep your response under 200 words.`;
+
+  // Callbacks for the AI provider
+  const onChunk = (content) => {
+    sendDataCallback({
+      message: { content },
+      done: false,
+    });
+  };
+
+  const onError = (error) => {
+    console.error("AI Provider error:", error.message);
+    sendDataCallback({
+      error: error.message || "Failed to get AI response",
+    });
+  };
+
+  const onComplete = () => {
+    console.log("AI stream completed successfully");
+    sendDataCallback({
+      message: { content: "" },
+      done: true,
+    });
   };
 
   try {
-    const response = await axios.post(
-      "http://localhost:11434/api/chat",
-      postData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        responseType: "stream", // This tells axios to handle the response as a stream
-      }
-    );
-
-    response.data.on("data", (chunk) => {
-      const parsedChunk = JSON.parse(chunk);
-      responseBody += chunk;
-      sendDataCallback(parsedChunk);
-    });
-
-    response.data.on("end", () => {
-      sendDataCallback(" "); // Consider changing this to a more meaningful end-of-stream signal if needed
-      return responseBody;
-    });
+    await streamAIResponse(userMessage, onChunk, onError, onComplete);
   } catch (error) {
-    console.error("Error:", error);
-    throw error; // Rethrow or handle error appropriately
+    console.error("Stream response error:", error.message);
+    onError(error);
   }
 }
-
-
